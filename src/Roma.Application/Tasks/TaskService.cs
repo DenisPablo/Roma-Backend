@@ -2,9 +2,16 @@ using Roma.Application.Configuration;
 using Roma.Domain.Categories;
 using Roma.Domain.Common;
 using Roma.Domain.Exceptions;
+using Roma.Domain.Reminders;
 using Roma.Domain.Tasks;
 
 namespace Roma.Application.Tasks;
+
+public record TaskReminderResponse(
+    int Id,
+    int OffsetMinutes,
+    string DueAt,
+    string? SentAt);
 
 public record CreateTaskRequest(
     string Title,
@@ -35,7 +42,8 @@ public record TaskResponse(
     DateTimeOffset? DayClosedAt,
     string? ReminderSentAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<TaskReminderResponse>? Reminders = null);
 
 public record CompleteTaskResponse(
     int Id,
@@ -46,15 +54,18 @@ public class TaskService
 {
     private readonly ITaskRepository _taskRepository;
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IReminderRepository _reminderRepository;
     private readonly AppOptions _options;
 
     public TaskService(
         ITaskRepository taskRepository,
         ICategoryRepository categoryRepository,
+        IReminderRepository reminderRepository,
         AppOptions options)
     {
         _taskRepository = taskRepository;
         _categoryRepository = categoryRepository;
+        _reminderRepository = reminderRepository;
         _options = options;
     }
 
@@ -68,7 +79,16 @@ public class TaskService
         }
 
         var list = await _taskRepository.GetByDayAsync(targetDay, ct);
-        return list.Select(MapToResponse).ToList();
+        var results = new List<TaskResponse>(list.Count);
+        foreach (var task in list)
+        {
+            var reminders = task.Kind == "event"
+                ? await GetRemindersAsync(task.Id, ct)
+                : null;
+            results.Add(MapToResponse(task, reminders));
+        }
+
+        return results;
     }
 
     public async Task<TaskResponse> GetByIdAsync(int id, CancellationToken ct = default)
@@ -76,7 +96,11 @@ public class TaskService
         var task = await _taskRepository.GetByIdAsync(id, ct)
             ?? throw new EntityNotFoundException($"Task with ID {id} was not found.");
 
-        return MapToResponse(task);
+        var reminders = task.Kind == "event"
+            ? await GetRemindersAsync(task.Id, ct)
+            : null;
+
+        return MapToResponse(task, reminders);
     }
 
     public async Task<TaskResponse> CreateAsync(CreateTaskRequest request, CancellationToken ct = default)
@@ -93,7 +117,26 @@ public class TaskService
         };
 
         var created = await _taskRepository.AddAsync(entity, ct);
-        return MapToResponse(created);
+
+        IReadOnlyList<TaskReminderResponse>? reminders = null;
+        if (created.Kind == "event")
+        {
+            int[] offsets;
+            if (request.Reminders != null && request.Reminders.Length > 0)
+            {
+                var spec = string.Join(",", request.Reminders);
+                offsets = TimeUtils.ParseOffsets(spec);
+            }
+            else
+            {
+                offsets = TimeUtils.ParseOffsets(_options.EventReminderOffsets);
+            }
+
+            await _reminderRepository.CreateForEventAsync(created.Id, offsets, created.Day, created.ScheduledTime, ct);
+            reminders = await GetRemindersAsync(created.Id, ct);
+        }
+
+        return MapToResponse(created, reminders);
     }
 
     public async Task<TaskResponse> StartAsync(int id, CancellationToken ct = default)
@@ -104,7 +147,8 @@ public class TaskService
         task.Start(DateTimeOffset.UtcNow);
         await _taskRepository.UpdateAsync(task, ct);
 
-        return MapToResponse(task);
+        var reminders = task.Kind == "event" ? await GetRemindersAsync(task.Id, ct) : null;
+        return MapToResponse(task, reminders);
     }
 
     public async Task<CompleteTaskResponse> CompleteAsync(int id, CancellationToken ct = default)
@@ -140,10 +184,17 @@ public class TaskService
 
             var isFuture = string.CompareOrdinal(newMoment, currentMoment) > 0;
             task.UpdateSchedule(newDay, newTime, isFuture);
+
+            if (task.Kind == "event")
+            {
+                await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
+            }
         }
 
         await _taskRepository.UpdateAsync(task, ct);
-        return MapToResponse(task);
+
+        var reminders = task.Kind == "event" ? await GetRemindersAsync(task.Id, ct) : null;
+        return MapToResponse(task, reminders);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -154,7 +205,13 @@ public class TaskService
         await _taskRepository.DeleteAsync(id, ct);
     }
 
-    private static TaskResponse MapToResponse(TaskItem t) =>
+    private async Task<IReadOnlyList<TaskReminderResponse>> GetRemindersAsync(int taskId, CancellationToken ct)
+    {
+        var list = await _reminderRepository.GetByTaskIdAsync(taskId, ct);
+        return list.Select(r => new TaskReminderResponse(r.Id, r.OffsetMinutes, r.DueAt, r.SentAt)).ToList();
+    }
+
+    private static TaskResponse MapToResponse(TaskItem t, IReadOnlyList<TaskReminderResponse>? reminders = null) =>
         new(
             t.Id,
             t.Title,
@@ -170,6 +227,7 @@ public class TaskService
             t.DayClosedAt,
             t.ReminderSentAt,
             t.CreatedAt,
-            t.UpdatedAt
+            t.UpdatedAt,
+            reminders
         );
 }

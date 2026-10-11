@@ -3,9 +3,11 @@ using Roma.Application.Categories;
 using Roma.Application.Configuration;
 using Roma.Application.Tasks;
 using Roma.Domain.Categories;
+using Roma.Domain.Reminders;
 using Roma.Domain.Tasks;
 using Roma.Infrastructure.Categories;
 using Roma.Infrastructure.Database;
+using Roma.Infrastructure.Reminders;
 using Roma.Infrastructure.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +43,7 @@ builder.Services.AddSingleton<DatabaseService>();
 // Repositories
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
 
 // Application Services
 builder.Services.AddScoped<CategoryService>();
