@@ -12,6 +12,8 @@ public class AppOptions
     public string Categories { get; set; } = "Trabajo,Estudio,Salud,Personal,Hogar,Otros";
     public string DbPath { get; set; } = "./data/roma.db";
     public string EventReminderOffsets { get; set; } = "-7d,-3d,-1d,-2h,0";
+    public string CorsOrigins { get; set; } = "*";
+    public bool? SwaggerEnabled { get; set; } = null;
 
     public void Validate()
     {

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.Hosting;
 using Roma.Domain.Exceptions;
 
 namespace Roma.Api.Middleware;
@@ -7,10 +8,12 @@ namespace Roma.Api.Middleware;
 public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly IHostEnvironment _env;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next)
+    public ExceptionHandlingMiddleware(RequestDelegate next, IHostEnvironment env)
     {
         _next = next;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -25,7 +28,7 @@ public class ExceptionHandlingMiddleware
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var statusCode = exception switch
         {
@@ -36,10 +39,14 @@ public class ExceptionHandlingMiddleware
             _ => HttpStatusCode.InternalServerError
         };
 
+        var message = (statusCode == HttpStatusCode.InternalServerError && !_env.IsDevelopment())
+            ? "An unexpected error occurred."
+            : exception.Message;
+
         var response = new
         {
             statusCode = (int)statusCode,
-            message = exception.Message
+            message
         };
 
         context.Response.ContentType = "application/json";
