@@ -31,4 +31,15 @@ public class ApiBootTests : IClassFixture<WebApplicationFactory<Program>>
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("status").GetString().Should().Be("healthy");
     }
+
+    [Fact]
+    public async Task GetSwaggerJson_ReturnsOkAndValidOpenApi()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/swagger/v1/swagger.json");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("\"openapi\":");
+    }
 }

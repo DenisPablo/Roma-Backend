@@ -68,6 +68,7 @@ public class ReminderRepository : IReminderRepository
                 FROM task_reminders r
                 JOIN tasks t ON r.task_id = t.id
                 WHERE t.kind = 'event'
+                  AND t.deleted_at IS NULL
                   AND r.sent_at IS NULL
                   AND r.due_at <= @NowLocal
             )

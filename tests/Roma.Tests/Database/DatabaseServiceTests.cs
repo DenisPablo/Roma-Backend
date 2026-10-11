@@ -77,4 +77,28 @@ public class DatabaseServiceTests : IDisposable
         var act = async () => await conn.ExecuteAsync(invalidEventSql, new { CatId = catId });
         await act.Should().ThrowAsync<SqliteException>();
     }
+
+    [Fact]
+    public async Task SoftDeletes_ColumnsExistAndPreservePhysicalIntegrity()
+    {
+        var options = new AppOptions();
+        var service = new DatabaseService(_factory, options);
+        await service.InitializeAsync();
+
+        using var conn = await _factory.CreateConnectionAsync();
+
+        // Check migration 3 is recorded
+        var v3 = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM schema_migrations WHERE version = 3;");
+        v3.Should().Be(1);
+
+        // Verify deleted_at columns exist on all 3 tables
+        var catCols = await conn.QueryAsync<string>("SELECT name FROM pragma_table_info('categories');");
+        catCols.Should().Contain("deleted_at");
+
+        var taskCols = await conn.QueryAsync<string>("SELECT name FROM pragma_table_info('tasks');");
+        taskCols.Should().Contain("deleted_at");
+
+        var gymCols = await conn.QueryAsync<string>("SELECT name FROM pragma_table_info('workout_sessions');");
+        gymCols.Should().Contain("deleted_at");
+    }
 }

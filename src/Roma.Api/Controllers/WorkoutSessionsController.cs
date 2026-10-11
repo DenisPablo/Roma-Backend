@@ -4,7 +4,6 @@ using Roma.Application.Gym;
 namespace Roma.Api.Controllers;
 
 [ApiController]
-[Route("workouts")]
 [Route("api/workouts")]
 public class WorkoutSessionsController : ControllerBase
 {

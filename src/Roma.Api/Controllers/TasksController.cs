@@ -4,7 +4,6 @@ using Roma.Application.Tasks;
 namespace Roma.Api.Controllers;
 
 [ApiController]
-[Route("tasks")]
 [Route("api/tasks")]
 public class TasksController : ControllerBase
 {
@@ -16,9 +15,15 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetByDay([FromQuery] string? day, CancellationToken ct)
+    public async Task<IActionResult> Get(
+        [FromQuery] string? date,
+        [FromQuery] string? day,
+        [FromQuery] string? from,
+        [FromQuery] string? to,
+        CancellationToken ct)
     {
-        var list = await _service.GetByDayAsync(day, ct);
+        var targetDate = !string.IsNullOrWhiteSpace(date) ? date : day;
+        var list = await _service.GetTasksAsync(targetDate, from, to, ct);
         return Ok(list);
     }
 

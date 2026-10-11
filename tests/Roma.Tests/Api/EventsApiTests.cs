@@ -28,12 +28,12 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
 
-        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/categories");
+        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
         var catId = catList![0].Id;
 
         // 1. Create event with default configured reminders
         var createReq = new CreateTaskRequest("Dentist", "2026-10-25", "11:00", catId, Kind: "event");
-        var createRes = await client.PostAsJsonAsync("/tasks", createReq);
+        var createRes = await client.PostAsJsonAsync("/api/tasks", createReq);
         createRes.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var evt = await createRes.Content.ReadFromJsonAsync<TaskResponse>();
@@ -44,15 +44,15 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
         evt.Reminders!.Select(r => r.OffsetMinutes).Should().Equal(-1440, -120, 0);
 
         // 2. Starting an event returns 409 Conflict
-        var startRes = await client.PostAsync($"/tasks/{evt.Id}/start", null);
+        var startRes = await client.PostAsync($"/api/tasks/{evt.Id}/start", null);
         startRes.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // 3. Completing an event returns 409 Conflict
-        var completeRes = await client.PostAsync($"/tasks/{evt.Id}/complete", null);
+        var completeRes = await client.PostAsync($"/api/tasks/{evt.Id}/complete", null);
         completeRes.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         // 4. Update event schedule
-        var patchRes = await client.PatchAsJsonAsync($"/tasks/{evt.Id}", new UpdateTaskRequest(null, "2026-10-30", "15:00", null));
+        var patchRes = await client.PatchAsJsonAsync($"/api/tasks/{evt.Id}", new UpdateTaskRequest(null, "2026-10-30", "15:00", null));
         patchRes.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var updated = await patchRes.Content.ReadFromJsonAsync<TaskResponse>();

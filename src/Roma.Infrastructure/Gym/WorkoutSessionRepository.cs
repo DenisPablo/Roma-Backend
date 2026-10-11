@@ -51,7 +51,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
         const string sql = """
             SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, created_at, updated_at
             FROM workout_sessions
-            WHERE id = @Id;
+            WHERE id = @Id AND deleted_at IS NULL;
             """;
 
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
@@ -64,7 +64,8 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
         const string sql = """
             SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, created_at, updated_at
             FROM workout_sessions
-            WHERE (@From IS NULL OR date >= @From)
+            WHERE deleted_at IS NULL
+              AND (@From IS NULL OR date >= @From)
               AND (@To IS NULL OR date <= @To)
             ORDER BY date DESC, id DESC;
             """;
@@ -76,7 +77,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
-        const string sql = "DELETE FROM workout_sessions WHERE id = @Id;";
+        const string sql = "UPDATE workout_sessions SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = @Id AND deleted_at IS NULL;";
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
         var affected = await conn.ExecuteAsync(sql, new { Id = id });
         return affected > 0;
@@ -91,6 +92,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
         public int Feeling { get; set; }
         public int Recovery_Score { get; set; }
         public string? Notes { get; set; }
+        public string? Deleted_At { get; set; }
         public string Created_At { get; set; } = string.Empty;
         public string Updated_At { get; set; } = string.Empty;
 

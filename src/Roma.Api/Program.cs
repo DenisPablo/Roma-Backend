@@ -69,12 +69,21 @@ else
     builder.Services.AddSingleton<INotifierPort, NullNotifier>();
 }
 
-// Controllers
+// Controllers & OpenAPI
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Roma API v1");
+    c.RoutePrefix = "swagger";
+});
 
 // Ensure db directory exists and initialize database
 var dbDir = Path.GetDirectoryName(Path.GetFullPath(options.DbPath));
@@ -91,6 +100,7 @@ using (var scope = app.Services.CreateScope())
 
 app.MapControllers();
 
+app.MapGet("/", () => Results.Redirect("/swagger"));
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTimeOffset.UtcNow }));
 
 app.Run();

@@ -128,6 +128,26 @@ public class DatabaseService
             await conn.ExecuteAsync(sql, transaction: tx);
             await tx.CommitAsync(ct);
         }
+
+        // Migration 3: 003_soft_deletes.sql
+        if (!appliedVersions.Contains(3))
+        {
+            using var tx = await conn.BeginTransactionAsync(ct);
+            const string sql = """
+                ALTER TABLE categories ADD COLUMN deleted_at TEXT;
+                ALTER TABLE tasks ADD COLUMN deleted_at TEXT;
+                ALTER TABLE workout_sessions ADD COLUMN deleted_at TEXT;
+
+                CREATE INDEX IF NOT EXISTS idx_categories_deleted ON categories(deleted_at);
+                CREATE INDEX IF NOT EXISTS idx_tasks_deleted ON tasks(deleted_at);
+                CREATE INDEX IF NOT EXISTS idx_workout_sessions_deleted ON workout_sessions(deleted_at);
+
+                INSERT INTO schema_migrations (version, name) VALUES (3, '003_soft_deletes.sql');
+                """;
+
+            await conn.ExecuteAsync(sql, transaction: tx);
+            await tx.CommitAsync(ct);
+        }
     }
 
     private async Task SeedCategoriesAsync(DbConnection conn, CancellationToken ct)

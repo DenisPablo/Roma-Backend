@@ -4,7 +4,6 @@ using Roma.Application.Categories;
 namespace Roma.Api.Controllers;
 
 [ApiController]
-[Route("categories")]
 [Route("api/categories")]
 public class CategoriesController : ControllerBase
 {

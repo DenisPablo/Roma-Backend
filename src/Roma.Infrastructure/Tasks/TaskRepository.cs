@@ -61,7 +61,7 @@ public class TaskRepository : ITaskRepository
         const string sql = """
             SELECT id, title, day, scheduled_time, category_id, kind, status, started_at, completed_at, duration_seconds, day_closed_at, reminder_sent_at, created_at, updated_at
             FROM tasks
-            WHERE id = @Id;
+            WHERE id = @Id AND deleted_at IS NULL;
             """;
 
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
@@ -74,12 +74,29 @@ public class TaskRepository : ITaskRepository
         const string sql = """
             SELECT id, title, day, scheduled_time, category_id, kind, status, started_at, completed_at, duration_seconds, day_closed_at, reminder_sent_at, created_at, updated_at
             FROM tasks
-            WHERE day = @Day
+            WHERE day = @Day AND deleted_at IS NULL
             ORDER BY scheduled_time ASC, id ASC;
             """;
 
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
         var rows = await conn.QueryAsync<TaskDbRow>(sql, new { Day = day });
+        return rows.Select(r => r.ToDomain()).ToList();
+    }
+
+    public async Task<IReadOnlyList<TaskItem>> GetTasksAsync(string? from, string? to, string? date, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT id, title, day, scheduled_time, category_id, kind, status, started_at, completed_at, duration_seconds, day_closed_at, reminder_sent_at, created_at, updated_at
+            FROM tasks
+            WHERE deleted_at IS NULL
+              AND (@Date IS NULL OR day = @Date)
+              AND (@From IS NULL OR day >= @From)
+              AND (@To IS NULL OR day <= @To)
+            ORDER BY day ASC, scheduled_time ASC, id ASC;
+            """;
+
+        using var conn = await _connectionFactory.CreateConnectionAsync(ct);
+        var rows = await conn.QueryAsync<TaskDbRow>(sql, new { Date = date, From = from, To = to });
         return rows.Select(r => r.ToDomain()).ToList();
     }
 
@@ -98,7 +115,7 @@ public class TaskRepository : ITaskRepository
                 day_closed_at = @DayClosedAt,
                 reminder_sent_at = @ReminderSentAt,
                 updated_at = @UpdatedAt
-            WHERE id = @Id;
+            WHERE id = @Id AND deleted_at IS NULL;
             """;
 
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
@@ -123,7 +140,7 @@ public class TaskRepository : ITaskRepository
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
-        const string sql = "DELETE FROM tasks WHERE id = @Id;";
+        const string sql = "UPDATE tasks SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = @Id AND deleted_at IS NULL;";
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
         var affected = await conn.ExecuteAsync(sql, new { Id = id });
         return affected > 0;
@@ -135,6 +152,7 @@ public class TaskRepository : ITaskRepository
             SELECT id, title, day, scheduled_time, category_id, kind, status, started_at, completed_at, duration_seconds, day_closed_at, reminder_sent_at, created_at, updated_at
             FROM tasks
             WHERE kind = 'task'
+              AND deleted_at IS NULL
               AND reminder_sent_at IS NULL
               AND status IN ('pending', 'in_progress')
               AND day = @Day
@@ -168,6 +186,7 @@ public class TaskRepository : ITaskRepository
                 day_closed_at = @NowUtc,
                 updated_at = @NowUtc
             WHERE kind = 'task'
+              AND deleted_at IS NULL
               AND status = 'pending'
               AND day < @Today;
             """;
@@ -190,6 +209,7 @@ public class TaskRepository : ITaskRepository
         public int? Duration_Seconds { get; set; }
         public string? Day_Closed_At { get; set; }
         public string? Reminder_Sent_At { get; set; }
+        public string? Deleted_At { get; set; }
         public string Created_At { get; set; } = string.Empty;
         public string Updated_At { get; set; } = string.Empty;
 

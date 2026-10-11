@@ -69,16 +69,14 @@ public class TaskService
         _options = options;
     }
 
-    public async Task<IReadOnlyList<TaskResponse>> GetByDayAsync(string? day, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskResponse>> GetTasksAsync(string? date = null, string? from = null, string? to = null, CancellationToken ct = default)
     {
-        var targetDay = day;
-        if (string.IsNullOrWhiteSpace(targetDay))
+        if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(to) && string.CompareOrdinal(from, to) > 0)
         {
-            var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
-            targetDay = nowParts.DayString;
+            throw new DomainValidationException("'from' date cannot be after 'to' date.");
         }
 
-        var list = await _taskRepository.GetByDayAsync(targetDay, ct);
+        var list = await _taskRepository.GetTasksAsync(from, to, date, ct);
         var results = new List<TaskResponse>(list.Count);
         foreach (var task in list)
         {
@@ -89,6 +87,11 @@ public class TaskService
         }
 
         return results;
+    }
+
+    public async Task<IReadOnlyList<TaskResponse>> GetByDayAsync(string? day, CancellationToken ct = default)
+    {
+        return await GetTasksAsync(date: day, ct: ct);
     }
 
     public async Task<TaskResponse> GetByIdAsync(int id, CancellationToken ct = default)
