@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Roma.Api/Roma.Api.csproj" />
+    <Project Path="src/Roma.Application/Roma.Application.csproj" />
+    <Project Path="src/Roma.Domain/Roma.Domain.csproj" />
+    <Project Path="src/Roma.Infrastructure/Roma.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Roma.Tests/Roma.Tests.csproj" />
+  </Folder>
+</Solution>

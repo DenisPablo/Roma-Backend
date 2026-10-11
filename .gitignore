@@ -1,0 +1,22 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio / JetBrains
+.vs/
+.idea/
+*.DotSettings.user
+
+## SQLite
+*.db
+*.db-wal
+*.db-shm
+data/
+
+## OS
+.DS_Store
+Thumbs.db

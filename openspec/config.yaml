@@ -1,0 +1,56 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack (planned, NOT yet implemented): .NET (ASP.NET Core, C#) + SQLite + Dapper + Telegram bot (notification-only worker).
+  Architecture (planned): local web app for productivity tracking; tasks with day/time, states pending/in-progress/completed/not_done, duration logging; bot only notifies, never mutates.
+  Repository state: git repo initialized (branch main, no commits yet); only openspec/ and .atl/ exist. No source code, no dependencies installed.
+  SDK prerequisite: .NET SDK NOT installed on this machine (only the runtime host). Install .NET 10 LTS before apply.
+  Scope: current phase is PLANNING ONLY (proposal/spec/design/tasks). No implementation until a change reaches apply.
+  Strict TDD: disabled — no test runner exists yet; to be re-evaluated when the .NET stack is scaffolded (xUnit).
+
+rules:
+  proposal:
+    - Scope is planning-only; do not assume installed dependencies or existing code
+    - Include explicit out-of-scope for the Telegram bot worker (notify-only, no commands that mutate)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Model states as an explicit state machine (pending -> in-progress -> completed -> not_done) with allowed transitions
+  design:
+    - Include module boundaries for .NET: task domain module, persistence (SQLite + Dapper) module, bot worker module (hosted service)
+    - Document that the bot worker is a side-effect-only adapter over the task domain
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Add a bootstrap task to scaffold the .NET app and install the test runner (xUnit) before TDD tasks
+  apply:
+    guidelines:
+      - Follow the conventions defined in the archived design when code is finally written
+    tdd: false           # Re-evaluate to true once a test runner exists (xUnit, dotnet test)
+    test_command: "dotnet test"
+  verify:
+    test_command: "dotnet test"   # Populate on scaffold
+    build_command: "dotnet build" # Populate on scaffold
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  reason: No test runner detected — project has no source code or dependencies yet. Re-enable when the .NET scaffold (xUnit) is in place.
+  runner:
+    available: false
+    command: ""
+    framework: "xunit" # planned
+  layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage:
+    available: false
+    command: ""
+  quality:
+    linter: false
+    type_checker: false
+    formatter: false
