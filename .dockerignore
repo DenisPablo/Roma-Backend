@@ -1,0 +1,11 @@
+bin/
+obj/
+.git
+.agents
+.antigravity
+.vs
+.vscode
+*.db
+*.db-shm
+*.db-wal
+tests/
