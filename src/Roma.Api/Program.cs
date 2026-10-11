@@ -1,12 +1,15 @@
 using Roma.Api.Middleware;
 using Roma.Application.Categories;
 using Roma.Application.Configuration;
+using Roma.Application.Notifications;
 using Roma.Application.Tasks;
 using Roma.Domain.Categories;
+using Roma.Domain.Notifications;
 using Roma.Domain.Reminders;
 using Roma.Domain.Tasks;
 using Roma.Infrastructure.Categories;
 using Roma.Infrastructure.Database;
+using Roma.Infrastructure.Notifications;
 using Roma.Infrastructure.Reminders;
 using Roma.Infrastructure.Tasks;
 
@@ -44,10 +47,22 @@ builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
+builder.Services.AddScoped<IDaySummaryRepository, DaySummaryRepository>();
 
 // Application Services
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<TaskService>();
+
+// Notifications & Background Worker
+if (options.NotifyEnabled)
+{
+    builder.Services.AddSingleton<INotifierPort, TelegramNotifier>();
+    builder.Services.AddHostedService<NotificationWorker>();
+}
+else
+{
+    builder.Services.AddSingleton<INotifierPort, NullNotifier>();
+}
 
 // Controllers
 builder.Services.AddControllers();
