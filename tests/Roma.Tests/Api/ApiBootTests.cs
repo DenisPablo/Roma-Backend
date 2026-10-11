@@ -42,4 +42,29 @@ public class ApiBootTests : IClassFixture<WebApplicationFactory<Program>>
         var content = await response.Content.ReadAsStringAsync();
         content.Should().Contain("\"openapi\":");
     }
+
+    [Fact]
+    public async Task GetHealth_IncludesOwaspSecurityHeaders()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/health");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
+        response.Headers.GetValues("X-Frame-Options").Should().Contain("DENY");
+        response.Headers.GetValues("Referrer-Policy").Should().Contain("strict-origin-when-cross-origin");
+        response.Headers.GetValues("Permissions-Policy").Should().Contain("camera=(), microphone=(), geolocation=()");
+    }
+
+    [Fact]
+    public async Task GetApi_HandlesCorsHeaders()
+    {
+        var client = _factory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("Origin", "http://localhost:3000");
+
+        var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.Should().Contain(h => h.Key == "Access-Control-Allow-Origin");
+    }
 }
