@@ -1,12 +1,18 @@
+using Roma.Api.Middleware;
+using Roma.Application.Categories;
 using Roma.Application.Configuration;
+using Roma.Application.Tasks;
+using Roma.Domain.Categories;
+using Roma.Domain.Tasks;
+using Roma.Infrastructure.Categories;
 using Roma.Infrastructure.Database;
+using Roma.Infrastructure.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure and validate AppOptions
 var options = builder.Configuration.GetSection(AppOptions.SectionName).Get<AppOptions>() ?? new AppOptions();
 
-// Allow env overrides
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APP_TZ")))
     options.AppTz = Environment.GetEnvironmentVariable("APP_TZ")!;
 if (bool.TryParse(Environment.GetEnvironmentVariable("NOTIFY_ENABLED"), out var notifyEnabled))
@@ -32,10 +38,20 @@ builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={options.DbPath}"));
 builder.Services.AddSingleton<DatabaseService>();
 
+// Repositories
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+
+// Application Services
+builder.Services.AddScoped<CategoryService>();
+builder.Services.AddScoped<TaskService>();
+
 // Controllers
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Ensure db directory exists and initialize database
 var dbDir = Path.GetDirectoryName(Path.GetFullPath(options.DbPath));
