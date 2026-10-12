@@ -121,4 +121,50 @@ public static class TimeUtils
         var target = dt.AddMinutes(offsetMinutes);
         return $"{target.Year:D4}-{target.Month:D2}-{target.Day:D2}T{target.Hour:D2}:{target.Minute:D2}";
     }
+
+    public static (string From, string To) ResolveDateRange(string? month, string? from, string? to, string timeZoneId)
+    {
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            var parts = month.Trim().Split('-');
+            if (parts.Length != 2 ||
+                !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var year) ||
+                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var monthNum) ||
+                year < 1900 || year > 2100 ||
+                monthNum < 1 || monthNum > 12)
+            {
+                throw new ArgumentException($"Invalid month format: '{month}'. Expected 'YYYY-MM' (e.g. '2026-10').");
+            }
+
+            var daysInMonth = DateTime.DaysInMonth(year, monthNum);
+            return ($"{year:D4}-{monthNum:D2}-01", $"{year:D4}-{monthNum:D2}-{daysInMonth:D2}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(to))
+        {
+            if (string.CompareOrdinal(from, to) > 0)
+            {
+                throw new ArgumentException("'from' date cannot be after 'to' date.");
+            }
+            return (from.Trim(), to.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(from))
+        {
+            return (from.Trim(), from.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(to))
+        {
+            return (to.Trim(), to.Trim());
+        }
+
+        var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+        var curYear = nowLocal.Year;
+        var curMonth = nowLocal.Month;
+        var totalDays = DateTime.DaysInMonth(curYear, curMonth);
+
+        return ($"{curYear:D4}-{curMonth:D2}-01", $"{curYear:D4}-{curMonth:D2}-{totalDays:D2}");
+    }
 }

@@ -70,4 +70,36 @@ public class TimeUtilsTests
         utc.Minute.Should().Be(30);
         utc.Offset.Should().Be(TimeSpan.Zero);
     }
+
+    [Fact]
+    public void ResolveDateRange_WithValidMonth_ReturnsFirstAndLastDay()
+    {
+        var (from, to) = TimeUtils.ResolveDateRange("2026-02", null, null, "UTC");
+        from.Should().Be("2026-02-01");
+        to.Should().Be("2026-02-28");
+    }
+
+    [Fact]
+    public void ResolveDateRange_WithExplicitFromTo_ReturnsRange()
+    {
+        var (from, to) = TimeUtils.ResolveDateRange(null, "2026-10-05", "2026-10-20", "UTC");
+        from.Should().Be("2026-10-05");
+        to.Should().Be("2026-10-20");
+    }
+
+    [Fact]
+    public void ResolveDateRange_WhenFromAfterTo_ThrowsArgumentException()
+    {
+        var act = () => TimeUtils.ResolveDateRange(null, "2026-10-20", "2026-10-05", "UTC");
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*cannot be after*");
+    }
+
+    [Fact]
+    public void ResolveDateRange_WithInvalidMonth_ThrowsArgumentException()
+    {
+        var act = () => TimeUtils.ResolveDateRange("invalid-month", null, null, "UTC");
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Invalid month format*");
+    }
 }

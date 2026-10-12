@@ -2,15 +2,18 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Roma.Api.Middleware;
 using Roma.Application.Categories;
 using Roma.Application.Configuration;
+using Roma.Application.Dashboard;
 using Roma.Application.Gym;
 using Roma.Application.Notifications;
 using Roma.Application.Tasks;
 using Roma.Domain.Categories;
+using Roma.Domain.Dashboard;
 using Roma.Domain.Gym;
 using Roma.Domain.Notifications;
 using Roma.Domain.Reminders;
 using Roma.Domain.Tasks;
 using Roma.Infrastructure.Categories;
+using Roma.Infrastructure.Dashboard;
 using Roma.Infrastructure.Database;
 using Roma.Infrastructure.Gym;
 using Roma.Infrastructure.Notifications;
@@ -88,11 +91,13 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
 builder.Services.AddScoped<IDaySummaryRepository, DaySummaryRepository>();
 builder.Services.AddScoped<IWorkoutSessionRepository, WorkoutSessionRepository>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 // Application Services
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<TaskService>();
 builder.Services.AddScoped<WorkoutSessionService>();
+builder.Services.AddScoped<DashboardService>();
 
 // Notifications & Background Worker
 if (options.NotifyEnabled)

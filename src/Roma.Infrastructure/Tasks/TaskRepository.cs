@@ -83,7 +83,14 @@ public class TaskRepository : ITaskRepository
         return rows.Select(r => r.ToDomain()).ToList();
     }
 
-    public async Task<IReadOnlyList<TaskItem>> GetTasksAsync(string? from, string? to, string? date, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskItem>> GetTasksAsync(
+        string? from,
+        string? to,
+        string? date,
+        int? categoryId = null,
+        string? status = null,
+        string? kind = null,
+        CancellationToken ct = default)
     {
         const string sql = """
             SELECT id, title, day, scheduled_time, category_id, kind, status, started_at, completed_at, duration_seconds, day_closed_at, reminder_sent_at, created_at, updated_at
@@ -92,11 +99,22 @@ public class TaskRepository : ITaskRepository
               AND (@Date IS NULL OR day = @Date)
               AND (@From IS NULL OR day >= @From)
               AND (@To IS NULL OR day <= @To)
+              AND (@CategoryId IS NULL OR category_id = @CategoryId)
+              AND (@Status IS NULL OR status = @Status)
+              AND (@Kind IS NULL OR kind = @Kind)
             ORDER BY day ASC, scheduled_time ASC, id ASC;
             """;
 
         using var conn = await _connectionFactory.CreateConnectionAsync(ct);
-        var rows = await conn.QueryAsync<TaskDbRow>(sql, new { Date = date, From = from, To = to });
+        var rows = await conn.QueryAsync<TaskDbRow>(sql, new
+        {
+            Date = date,
+            From = from,
+            To = to,
+            CategoryId = categoryId,
+            Status = status,
+            Kind = kind
+        });
         return rows.Select(r => r.ToDomain()).ToList();
     }
 

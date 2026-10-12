@@ -1,3 +1,4 @@
+using Roma.Application.Configuration;
 using Roma.Domain.Exceptions;
 using Roma.Domain.Gym;
 
@@ -25,10 +26,12 @@ public record WorkoutSessionResponse(
 public class WorkoutSessionService
 {
     private readonly IWorkoutSessionRepository _repository;
+    private readonly AppOptions? _options;
 
-    public WorkoutSessionService(IWorkoutSessionRepository repository)
+    public WorkoutSessionService(IWorkoutSessionRepository repository, AppOptions? options = null)
     {
         _repository = repository;
+        _options = options;
     }
 
     public async Task<WorkoutSessionResponse> CreateAsync(CreateWorkoutSessionRequest request, CancellationToken ct = default)
@@ -53,8 +56,27 @@ public class WorkoutSessionService
         return MapToResponse(session);
     }
 
-    public async Task<IReadOnlyList<WorkoutSessionResponse>> GetSessionsAsync(string? from, string? to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<WorkoutSessionResponse>> GetSessionsAsync(
+        string? from = null,
+        string? to = null,
+        string? month = null,
+        CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            try
+            {
+                var tz = _options?.AppTz ?? "America/Argentina/Buenos_Aires";
+                var range = Roma.Domain.Common.TimeUtils.ResolveDateRange(month, null, null, tz);
+                from = range.From;
+                to = range.To;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new DomainValidationException(ex.Message);
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(to))
         {
             if (string.CompareOrdinal(from, to) > 0)

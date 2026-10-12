@@ -20,10 +20,14 @@ public class TasksController : ControllerBase
         [FromQuery] string? day,
         [FromQuery] string? from,
         [FromQuery] string? to,
+        [FromQuery] string? month,
+        [FromQuery] int? categoryId,
+        [FromQuery] string? status,
+        [FromQuery] string? kind,
         CancellationToken ct)
     {
         var targetDate = !string.IsNullOrWhiteSpace(date) ? date : day;
-        var list = await _service.GetTasksAsync(targetDate, from, to, ct);
+        var list = await _service.GetTasksAsync(targetDate, from, to, month, categoryId, status, kind, ct);
         return Ok(list);
     }
 

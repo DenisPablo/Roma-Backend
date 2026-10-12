@@ -69,14 +69,36 @@ public class TaskService
         _options = options;
     }
 
-    public async Task<IReadOnlyList<TaskResponse>> GetTasksAsync(string? date = null, string? from = null, string? to = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskResponse>> GetTasksAsync(
+        string? date = null,
+        string? from = null,
+        string? to = null,
+        string? month = null,
+        int? categoryId = null,
+        string? status = null,
+        string? kind = null,
+        CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            try
+            {
+                var range = TimeUtils.ResolveDateRange(month, null, null, _options.AppTz);
+                from = range.From;
+                to = range.To;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new DomainValidationException(ex.Message);
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(to) && string.CompareOrdinal(from, to) > 0)
         {
             throw new DomainValidationException("'from' date cannot be after 'to' date.");
         }
 
-        var list = await _taskRepository.GetTasksAsync(from, to, date, ct);
+        var list = await _taskRepository.GetTasksAsync(from, to, date, categoryId, status, kind, ct);
         var results = new List<TaskResponse>(list.Count);
         foreach (var task in list)
         {

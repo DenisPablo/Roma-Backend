@@ -22,9 +22,9 @@ public class WorkoutSessionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetSessions([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
+    public async Task<IActionResult> GetSessions([FromQuery] string? from, [FromQuery] string? to, [FromQuery] string? month, CancellationToken ct)
     {
-        var list = await _service.GetSessionsAsync(from, to, ct);
+        var list = await _service.GetSessionsAsync(from, to, month, ct);
         return Ok(list);
     }
 
