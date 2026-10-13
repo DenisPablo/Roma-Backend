@@ -29,6 +29,12 @@ if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APP_TZ")))
     options.AppTz = Environment.GetEnvironmentVariable("APP_TZ")!;
 if (bool.TryParse(Environment.GetEnvironmentVariable("NOTIFY_ENABLED"), out var notifyEnabled))
     options.NotifyEnabled = notifyEnabled;
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NTFY_TOPIC")))
+    options.NtfyTopic = Environment.GetEnvironmentVariable("NTFY_TOPIC");
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NTFY_SERVER_URL")))
+    options.NtfyServerUrl = Environment.GetEnvironmentVariable("NTFY_SERVER_URL")!;
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NTFY_TOKEN")))
+    options.NtfyToken = Environment.GetEnvironmentVariable("NTFY_TOKEN");
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")))
     options.TelegramBotToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TELEGRAM_CHAT_ID")))
@@ -102,7 +108,14 @@ builder.Services.AddScoped<DashboardService>();
 // Notifications & Background Worker
 if (options.NotifyEnabled)
 {
-    builder.Services.AddSingleton<INotifierPort, TelegramNotifier>();
+    if (!string.IsNullOrWhiteSpace(options.NtfyTopic))
+    {
+        builder.Services.AddHttpClient<INotifierPort, NtfyNotifier>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<INotifierPort, TelegramNotifier>();
+    }
     builder.Services.AddHostedService<NotificationWorker>();
 }
 else

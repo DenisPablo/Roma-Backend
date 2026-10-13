@@ -6,6 +6,9 @@ public class AppOptions
 
     public string AppTz { get; set; } = "America/Argentina/Buenos_Aires";
     public bool NotifyEnabled { get; set; } = false;
+    public string? NtfyTopic { get; set; }
+    public string NtfyServerUrl { get; set; } = "https://ntfy.sh";
+    public string? NtfyToken { get; set; }
     public string? TelegramBotToken { get; set; }
     public string? TelegramChatId { get; set; }
     public string EodTime { get; set; } = "23:55";
@@ -28,11 +31,13 @@ public class AppOptions
 
         if (NotifyEnabled)
         {
-            if (string.IsNullOrWhiteSpace(TelegramBotToken))
-                throw new InvalidOperationException("TELEGRAM_BOT_TOKEN must be specified when NOTIFY_ENABLED is true.");
+            var hasNtfy = !string.IsNullOrWhiteSpace(NtfyTopic);
+            var hasTelegram = !string.IsNullOrWhiteSpace(TelegramBotToken) && !string.IsNullOrWhiteSpace(TelegramChatId);
 
-            if (string.IsNullOrWhiteSpace(TelegramChatId))
-                throw new InvalidOperationException("TELEGRAM_CHAT_ID must be specified when NOTIFY_ENABLED is true.");
+            if (!hasNtfy && !hasTelegram)
+            {
+                throw new InvalidOperationException("Either NTFY_TOPIC or TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID must be specified when NOTIFY_ENABLED is true.");
+            }
         }
     }
 }
