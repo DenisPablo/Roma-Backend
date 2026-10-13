@@ -19,13 +19,16 @@ public record CreateTaskRequest(
     string ScheduledTime,
     int CategoryId,
     string? Kind = "task",
-    string[]? Reminders = null);
+    string[]? Reminders = null,
+    int? DurationSeconds = null,
+    bool? IsCompleted = false);
 
 public record UpdateTaskRequest(
     string? Title,
     string? Day,
     string? ScheduledTime,
-    int? CategoryId);
+    int? CategoryId,
+    int? DurationSeconds = null);
 
 public record TaskResponse(
     int Id,
@@ -137,7 +140,13 @@ public class TaskService
         var entity = kind switch
         {
             "event" => TaskItem.CreateEvent(request.Title, request.Day, request.ScheduledTime, request.CategoryId),
-            "task" => TaskItem.CreateTask(request.Title, request.Day, request.ScheduledTime, request.CategoryId),
+            "task" => TaskItem.CreateTask(
+                request.Title,
+                request.Day,
+                request.ScheduledTime,
+                request.CategoryId,
+                request.DurationSeconds,
+                request.IsCompleted ?? false),
             _ => throw new DomainValidationException($"Invalid task kind '{kind}'. Must be 'task' or 'event'.")
         };
 
@@ -224,6 +233,11 @@ public class TaskService
                     await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
                 }
             }
+        }
+
+        if (request.DurationSeconds.HasValue)
+        {
+            task.UpdateDuration(request.DurationSeconds.Value);
         }
 
         await _taskRepository.UpdateAsync(task, ct);

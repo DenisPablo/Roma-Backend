@@ -26,11 +26,39 @@ public class TaskItem
 
     private TaskItem() { }
 
-    public static TaskItem CreateTask(string title, string day, string scheduledTime, int categoryId)
+    public static TaskItem CreateTask(
+        string title,
+        string day,
+        string scheduledTime,
+        int categoryId,
+        int? durationSeconds = null,
+        bool isCompleted = false)
     {
         ValidateCommon(title, day, scheduledTime, categoryId);
 
+        if (durationSeconds.HasValue && durationSeconds.Value < 0)
+            throw new DomainValidationException("Duration cannot be negative.");
+
         var now = DateTimeOffset.UtcNow;
+        if (isCompleted)
+        {
+            var dur = durationSeconds ?? 0;
+            return new TaskItem
+            {
+                Title = title.Trim(),
+                Day = day.Trim(),
+                ScheduledTime = scheduledTime.Trim(),
+                CategoryId = categoryId,
+                Kind = "task",
+                Status = "completed",
+                StartedAt = now.AddSeconds(-dur),
+                CompletedAt = now,
+                DurationSeconds = dur,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+        }
+
         return new TaskItem
         {
             Title = title.Trim(),
@@ -39,6 +67,7 @@ public class TaskItem
             CategoryId = categoryId,
             Kind = "task",
             Status = "pending",
+            DurationSeconds = durationSeconds,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -158,6 +187,19 @@ public class TaskItem
             throw new DomainValidationException("A valid CategoryId must be specified.");
 
         CategoryId = newCategoryId;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void UpdateDuration(int durationSeconds)
+    {
+        if (durationSeconds < 0)
+            throw new DomainValidationException("Duration cannot be negative.");
+
+        DurationSeconds = durationSeconds;
+        if (Status == "completed" && CompletedAt.HasValue)
+        {
+            StartedAt = CompletedAt.Value.AddSeconds(-durationSeconds);
+        }
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

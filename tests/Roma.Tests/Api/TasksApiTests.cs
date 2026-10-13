@@ -214,4 +214,66 @@ public class TasksApiTests : IClassFixture<WebApplicationFactory<Program>>
         var conflictRes = await client.PutAsJsonAsync($"/api/tasks/{task.Id}", conflictReq);
         conflictRes.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task CreateTask_WithPresetDuration_SavesDurationAndFormatsResponse()
+    {
+        var client = _factory.CreateClient();
+        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+        var catId = catList![0].Id;
+
+        var createReq = new CreateTaskRequest("Preset Duration Task", "2026-10-19", "09:30", catId, DurationSeconds: 1800);
+        var createRes = await client.PostAsJsonAsync("/api/tasks", createReq);
+        createRes.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var task = await createRes.Content.ReadFromJsonAsync<TaskResponse>();
+        task.Should().NotBeNull();
+        task!.DurationSeconds.Should().Be(1800);
+        task.FormattedDuration.Should().Be("30m");
+        task.Status.Should().Be("pending");
+    }
+
+    [Fact]
+    public async Task CreateTask_AsAlreadyCompleted_SetsCompletedStatusAndDuration()
+    {
+        var client = _factory.CreateClient();
+        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+        var catId = catList![0].Id;
+
+        var createReq = new CreateTaskRequest("Already Finished Task", "2026-10-19", "11:00", catId, DurationSeconds: 2700, IsCompleted: true);
+        var createRes = await client.PostAsJsonAsync("/api/tasks", createReq);
+        createRes.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var task = await createRes.Content.ReadFromJsonAsync<TaskResponse>();
+        task.Should().NotBeNull();
+        task!.Status.Should().Be("completed");
+        task.DurationSeconds.Should().Be(2700);
+        task.FormattedDuration.Should().Be("45m");
+        task.StartedAt.Should().NotBeNull();
+        task.CompletedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateCompletedTask_DurationCanBeEdited_AndRecalculatesInterval()
+    {
+        var client = _factory.CreateClient();
+        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+        var catId = catList![0].Id;
+
+        // 1. Create and complete directly
+        var createReq = new CreateTaskRequest("Task to Edit Duration", "2026-10-19", "15:00", catId, DurationSeconds: 600, IsCompleted: true);
+        var createRes = await client.PostAsJsonAsync("/api/tasks", createReq);
+        var created = await createRes.Content.ReadFromJsonAsync<TaskResponse>();
+
+        // 2. Edit duration to 1 hour (3600 seconds)
+        var updateReq = new UpdateTaskRequest(null, null, null, null, DurationSeconds: 3600);
+        var updateRes = await client.PatchAsJsonAsync($"/api/tasks/{created!.Id}", updateReq);
+        updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updated = await updateRes.Content.ReadFromJsonAsync<TaskResponse>();
+        updated!.DurationSeconds.Should().Be(3600);
+        updated.FormattedDuration.Should().Be("1h");
+        updated.Status.Should().Be("completed");
+        updated.CompletedAt.Should().BeOnOrAfter(updated.StartedAt!.Value);
+    }
 }
