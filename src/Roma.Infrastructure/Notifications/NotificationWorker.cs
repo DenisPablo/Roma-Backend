@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Roma.Application.Configuration;
@@ -12,9 +13,7 @@ namespace Roma.Infrastructure.Notifications;
 
 public class NotificationWorker : BackgroundService
 {
-    private readonly ITaskRepository _taskRepository;
-    private readonly IReminderRepository _reminderRepository;
-    private readonly IDaySummaryRepository _daySummaryRepository;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly INotifierPort _notifier;
     private readonly AppOptions _options;
     private readonly ILogger<NotificationWorker> _logger;
@@ -23,16 +22,12 @@ public class NotificationWorker : BackgroundService
     public string BootLocal { get; private set; } = string.Empty;
 
     public NotificationWorker(
-        ITaskRepository taskRepository,
-        IReminderRepository reminderRepository,
-        IDaySummaryRepository daySummaryRepository,
+        IServiceScopeFactory scopeFactory,
         INotifierPort notifier,
         AppOptions options,
         ILogger<NotificationWorker> logger)
     {
-        _taskRepository = taskRepository;
-        _reminderRepository = reminderRepository;
-        _daySummaryRepository = daySummaryRepository;
+        _scopeFactory = scopeFactory;
         _notifier = notifier;
         _options = options;
         _logger = logger;
@@ -44,12 +39,19 @@ public class NotificationWorker : BackgroundService
         var bootParts = TimeUtils.GetLocalParts(BootUtc, _options.AppTz);
         BootLocal = bootParts.IsoString;
 
-        _logger.LogInformation("Running boot sweep for BootUtc: {BootUtc}, BootLocal: {BootLocal}", BootUtc, BootLocal);
-        await _reminderRepository.MarkOverdueBeforeBootAsync(BootLocal, BootUtc, ct);
+        _logger.LogInformation("Notification worker started with timezone: {Tz}, BootUtc: {BootUtc}, BootLocal: {BootLocal}", _options.AppTz, BootUtc, BootLocal);
+        using var scope = _scopeFactory.CreateScope();
+        var reminderRepository = scope.ServiceProvider.GetRequiredService<IReminderRepository>();
+        await reminderRepository.MarkOverdueBeforeBootAsync(BootLocal, BootUtc, ct);
     }
 
     public async Task ProcessTickAsync(DateTimeOffset utcNow, CancellationToken ct = default)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var taskRepository = scope.ServiceProvider.GetRequiredService<ITaskRepository>();
+        var reminderRepository = scope.ServiceProvider.GetRequiredService<IReminderRepository>();
+        var daySummaryRepository = scope.ServiceProvider.GetRequiredService<IDaySummaryRepository>();
+
         var localParts = TimeUtils.GetLocalParts(utcNow, _options.AppTz);
         var today = localParts.DayString;
         var currentTime = localParts.TimeString;
@@ -58,7 +60,7 @@ public class NotificationWorker : BackgroundService
         // 1. Rollover sweep: tasks pending from past days become not_done
         try
         {
-            var rolledOver = await _taskRepository.RolloverPendingTasksAsync(today, utcNow, ct);
+            var rolledOver = await taskRepository.RolloverPendingTasksAsync(today, utcNow, ct);
             if (rolledOver > 0)
             {
                 _logger.LogInformation("Rolled over {Count} overdue tasks to not_done.", rolledOver);
@@ -72,12 +74,12 @@ public class NotificationWorker : BackgroundService
         // 2. Find due tasks (kind='task')
         try
         {
-            var dueTasks = await _taskRepository.FindDueTasksAsync(today, currentTime, ct);
+            var dueTasks = await taskRepository.FindDueTasksAsync(today, currentTime, ct);
             foreach (var task in dueTasks)
             {
                 var msg = $"⏰ Tarea programada: {task.Title} (Hora: {task.ScheduledTime})";
                 await _notifier.SendAsync(msg, ct);
-                await _taskRepository.MarkReminderSentAsync(task.Id, currentIso, ct);
+                await taskRepository.MarkReminderSentAsync(task.Id, currentIso, ct);
                 _logger.LogInformation("Notification sent for task {TaskId} - {Title}", task.Id, task.Title);
             }
         }
@@ -89,16 +91,16 @@ public class NotificationWorker : BackgroundService
         // 3. Find due reminders (kind='event', P2 policy)
         try
         {
-            var dueReminders = await _reminderRepository.FindDueRemindersAsync(currentIso, ct);
+            var dueReminders = await reminderRepository.FindDueRemindersAsync(currentIso, ct);
             foreach (var rem in dueReminders)
             {
-                var task = await _taskRepository.GetByIdAsync(rem.TaskId, ct);
+                var task = await taskRepository.GetByIdAsync(rem.TaskId, ct);
                 if (task != null)
                 {
                     var msg = $"🔔 Recordatorio de evento: {task.Title} (Fecha: {task.Day} a las {task.ScheduledTime})";
                     await _notifier.SendAsync(msg, ct);
                 }
-                await _reminderRepository.MarkSentAsync(rem.Id, currentIso, ct);
+                await reminderRepository.MarkSentAsync(rem.Id, currentIso, ct);
                 _logger.LogInformation("Notification sent for event reminder {ReminderId} (Task {TaskId})", rem.Id, rem.TaskId);
             }
         }
@@ -112,10 +114,10 @@ public class NotificationWorker : BackgroundService
         {
             if (string.CompareOrdinal(currentTime, _options.EodTime) >= 0)
             {
-                var alreadySent = await _daySummaryRepository.HasSummaryBeenSentAsync(today, ct);
+                var alreadySent = await daySummaryRepository.HasSummaryBeenSentAsync(today, ct);
                 if (!alreadySent)
                 {
-                    await SendEodSummaryAsync(today, currentIso, ct);
+                    await SendEodSummaryAsync(taskRepository, daySummaryRepository, today, currentIso, ct);
                 }
             }
         }
@@ -125,9 +127,14 @@ public class NotificationWorker : BackgroundService
         }
     }
 
-    private async Task SendEodSummaryAsync(string today, string currentIso, CancellationToken ct)
+    private async Task SendEodSummaryAsync(
+        ITaskRepository taskRepository,
+        IDaySummaryRepository daySummaryRepository,
+        string today,
+        string currentIso,
+        CancellationToken ct)
     {
-        var allTasks = await _taskRepository.GetByDayAsync(today, ct);
+        var allTasks = await taskRepository.GetByDayAsync(today, ct);
         var tasksOnly = allTasks.Where(t => t.Kind == "task").ToList();
 
         var completed = tasksOnly.Where(t => t.Status == "completed").ToList();
@@ -170,7 +177,7 @@ public class NotificationWorker : BackgroundService
         }
 
         await _notifier.SendAsync(sb.ToString().TrimEnd(), ct);
-        await _daySummaryRepository.MarkSummarySentAsync(today, currentIso, ct);
+        await daySummaryRepository.MarkSummarySentAsync(today, currentIso, ct);
         _logger.LogInformation("EOD summary sent for {Day}.", today);
     }
 

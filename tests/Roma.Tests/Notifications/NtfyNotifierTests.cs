@@ -56,7 +56,7 @@ public class NtfyNotifierTests
         req.Uri!.ToString().Should().Be("https://ntfy.sh/roma-test-topic");
         req.Content.Should().Be("Recordatorio de evento de prueba");
 
-        req.Headers.GetValues("Title").Should().Contain("🏛️ Roma");
+        req.Headers.GetValues("Title").Should().Contain("Roma");
         req.Headers.GetValues("Priority").Should().Contain("default");
         req.Headers.GetValues("Tags").Should().Contain("calendar,bell");
     }

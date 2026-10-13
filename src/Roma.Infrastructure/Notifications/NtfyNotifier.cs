@@ -41,9 +41,9 @@ public class NtfyNotifier : INotifierPort
                 using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 request.Content = new StringContent(text, Encoding.UTF8, "text/plain");
 
-                request.Headers.Add("Title", "🏛️ Roma");
-                request.Headers.Add("Priority", "default");
-                request.Headers.Add("Tags", "calendar,bell");
+                request.Headers.TryAddWithoutValidation("Title", "Roma");
+                request.Headers.TryAddWithoutValidation("Priority", "default");
+                request.Headers.TryAddWithoutValidation("Tags", "calendar,bell");
 
                 if (!string.IsNullOrWhiteSpace(_options.NtfyToken))
                 {

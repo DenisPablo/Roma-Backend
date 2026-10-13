@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Roma.Application.Configuration;
 using Roma.Application.Notifications;
 using Roma.Domain.Categories;
 using Roma.Domain.Common;
+using Roma.Domain.Notifications;
 using Roma.Domain.Reminders;
 using Roma.Domain.Tasks;
 using Roma.Infrastructure.Categories;
@@ -56,10 +58,15 @@ public class NotificationWorkerTests : IDisposable
         _daySummaryRepo = new DaySummaryRepository(_factory);
         _notifier = new TestNotifier();
 
+        var services = new ServiceCollection();
+        services.AddScoped<ITaskRepository>(_ => _taskRepo);
+        services.AddScoped<IReminderRepository>(_ => _reminderRepo);
+        services.AddScoped<IDaySummaryRepository>(_ => _daySummaryRepo);
+        var provider = services.BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+
         _worker = new NotificationWorker(
-            _taskRepo,
-            _reminderRepo,
-            _daySummaryRepo,
+            scopeFactory,
             _notifier,
             _options,
             NullLogger<NotificationWorker>.Instance);
