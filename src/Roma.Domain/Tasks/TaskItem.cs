@@ -152,6 +152,15 @@ public class TaskItem
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void UpdateCategory(int newCategoryId)
+    {
+        if (newCategoryId <= 0)
+            throw new DomainValidationException("A valid CategoryId must be specified.");
+
+        CategoryId = newCategoryId;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void UpdateSchedule(string newDay, string newTime, bool isFutureInTz)
     {
         if (Status != "pending")

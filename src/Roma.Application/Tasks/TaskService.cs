@@ -198,21 +198,31 @@ public class TaskService
             task.UpdateTitle(request.Title);
         }
 
+        if (request.CategoryId.HasValue && request.CategoryId.Value != task.CategoryId)
+        {
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId.Value, ct)
+                ?? throw new EntityNotFoundException($"Category with ID {request.CategoryId.Value} does not exist.");
+            task.UpdateCategory(category.Id);
+        }
+
         if (request.Day != null || request.ScheduledTime != null)
         {
             var newDay = request.Day ?? task.Day;
             var newTime = request.ScheduledTime ?? task.ScheduledTime;
 
-            var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
-            var newMoment = $"{newDay}T{newTime}";
-            var currentMoment = $"{nowParts.DayString}T{nowParts.TimeString}";
-
-            var isFuture = string.CompareOrdinal(newMoment, currentMoment) > 0;
-            task.UpdateSchedule(newDay, newTime, isFuture);
-
-            if (task.Kind == "event")
+            if (newDay != task.Day || newTime != task.ScheduledTime)
             {
-                await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
+                var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
+                var newMoment = $"{newDay}T{newTime}";
+                var currentMoment = $"{nowParts.DayString}T{nowParts.TimeString}";
+
+                var isFuture = string.CompareOrdinal(newMoment, currentMoment) > 0;
+                task.UpdateSchedule(newDay, newTime, isFuture);
+
+                if (task.Kind == "event")
+                {
+                    await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
+                }
             }
         }
 

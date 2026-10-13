@@ -177,4 +177,41 @@ public class TasksApiTests : IClassFixture<WebApplicationFactory<Program>>
         var deletedAt = await conn.ExecuteScalarAsync<string>("SELECT deleted_at FROM tasks WHERE id = @Id", new { Id = created.Id });
         deletedAt.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public async Task UpdateCompletedTask_AllowsTitleAndCategoryChange_EvenWhenCompleted()
+    {
+        var client = _factory.CreateClient();
+        var catList = await client.GetFromJsonAsync<List<CategoryResponse>>("/api/categories");
+        catList.Should().NotBeNull();
+        catList!.Count.Should().BeGreaterThanOrEqualTo(2);
+        var cat1 = catList[0].Id;
+        var cat2 = catList[1].Id;
+
+        // 1. Create task
+        var createRes = await client.PostAsJsonAsync("/api/tasks", new CreateTaskRequest("Initial Task Title", "2026-10-15", "10:00", cat1));
+        createRes.StatusCode.Should().Be(HttpStatusCode.Created);
+        var task = await createRes.Content.ReadFromJsonAsync<TaskResponse>();
+
+        // 2. Start and Complete
+        await client.PostAsync($"/api/tasks/{task!.Id}/start", null);
+        var completeRes = await client.PostAsync($"/api/tasks/{task.Id}/complete", null);
+        completeRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. Update Title and Category on completed task (passing same schedule)
+        var updateReq = new UpdateTaskRequest("Refactored Title After Complete", "2026-10-15", "10:00", cat2);
+        var updateRes = await client.PutAsJsonAsync($"/api/tasks/{task.Id}", updateReq);
+        updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updated = await updateRes.Content.ReadFromJsonAsync<TaskResponse>();
+        updated.Should().NotBeNull();
+        updated!.Title.Should().Be("Refactored Title After Complete");
+        updated.CategoryId.Should().Be(cat2);
+        updated.Status.Should().Be("completed");
+
+        // 4. Attempting to change day to a different day still returns 409 Conflict
+        var conflictReq = new UpdateTaskRequest("Try Change Day", "2026-10-16", "10:00", cat2);
+        var conflictRes = await client.PutAsJsonAsync($"/api/tasks/{task.Id}", conflictReq);
+        conflictRes.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

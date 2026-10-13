@@ -46,6 +46,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPatch("{id:int}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateTaskRequest request, CancellationToken ct)
     {
         var updated = await _service.UpdateAsync(id, request, ct);
