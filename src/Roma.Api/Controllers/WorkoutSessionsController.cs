@@ -35,6 +35,13 @@ public class WorkoutSessionsController : ControllerBase
         return Ok(session);
     }
 
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateWorkoutSessionRequest request, CancellationToken ct)
+    {
+        var result = await _service.UpdateAsync(id, request, ct);
+        return Ok(result);
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {

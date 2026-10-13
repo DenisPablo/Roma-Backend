@@ -74,6 +74,35 @@ public class WorkoutSession
         };
     }
 
+    public void Update(
+        string? date = null,
+        string? targetMuscleGroup = null,
+        int? rpe = null,
+        int? feeling = null,
+        int? recoveryScore = null,
+        string? notes = null,
+        int? durationMinutes = null)
+    {
+        var newDate = !string.IsNullOrWhiteSpace(date) ? date.Trim() : Date;
+        var newMuscle = !string.IsNullOrWhiteSpace(targetMuscleGroup) ? targetMuscleGroup.Trim() : TargetMuscleGroup;
+        var newRpe = rpe ?? Rpe;
+        var newFeeling = feeling ?? Feeling;
+        var newRecovery = recoveryScore ?? RecoveryScore;
+        var newNotes = notes != null ? (string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()) : Notes;
+        var newDuration = durationMinutes ?? DurationMinutes ?? 60;
+
+        Validate(newDate, newMuscle, newRpe, newFeeling, newRecovery, newNotes, newDuration);
+
+        Date = newDate;
+        TargetMuscleGroup = newMuscle;
+        Rpe = newRpe;
+        Feeling = newFeeling;
+        RecoveryScore = newRecovery;
+        Notes = newNotes;
+        DurationMinutes = newDuration;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     private static void Validate(
         string date,
         string targetMuscleGroup,

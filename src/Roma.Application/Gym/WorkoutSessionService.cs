@@ -13,6 +13,15 @@ public record CreateWorkoutSessionRequest(
     string? Notes = null,
     int? DurationMinutes = 60);
 
+public record UpdateWorkoutSessionRequest(
+    string? Date = null,
+    string? TargetMuscleGroup = null,
+    int? Rpe = null,
+    int? Feeling = null,
+    int? RecoveryScore = null,
+    string? Notes = null,
+    int? DurationMinutes = null);
+
 public record WorkoutSessionResponse(
     int Id,
     string Date,
@@ -88,6 +97,24 @@ public class WorkoutSessionService
 
         var list = await _repository.GetSessionsAsync(from, to, ct);
         return list.Select(MapToResponse).ToList();
+    }
+
+    public async Task<WorkoutSessionResponse> UpdateAsync(int id, UpdateWorkoutSessionRequest request, CancellationToken ct = default)
+    {
+        var session = await _repository.GetByIdAsync(id, ct)
+            ?? throw new EntityNotFoundException($"Workout session with ID {id} was not found.");
+
+        session.Update(
+            request.Date,
+            request.TargetMuscleGroup,
+            request.Rpe,
+            request.Feeling,
+            request.RecoveryScore,
+            request.Notes,
+            request.DurationMinutes);
+
+        var updated = await _repository.UpdateAsync(session, ct);
+        return MapToResponse(updated);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)

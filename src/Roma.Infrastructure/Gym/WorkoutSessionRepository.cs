@@ -48,6 +48,38 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
             session.UpdatedAt);
     }
 
+    public async Task<WorkoutSession> UpdateAsync(WorkoutSession session, CancellationToken ct = default)
+    {
+        const string sql = """
+            UPDATE workout_sessions
+            SET date = @Date,
+                target_muscle_group = @TargetMuscleGroup,
+                rpe = @Rpe,
+                feeling = @Feeling,
+                recovery_score = @RecoveryScore,
+                notes = @Notes,
+                duration_minutes = @DurationMinutes,
+                updated_at = @UpdatedAt
+            WHERE id = @Id AND deleted_at IS NULL;
+            """;
+
+        using var conn = await _connectionFactory.CreateConnectionAsync(ct);
+        await conn.ExecuteAsync(sql, new
+        {
+            session.Date,
+            session.TargetMuscleGroup,
+            session.Rpe,
+            session.Feeling,
+            session.RecoveryScore,
+            session.Notes,
+            session.DurationMinutes,
+            UpdatedAt = session.UpdatedAt.ToString("o"),
+            session.Id
+        });
+
+        return session;
+    }
+
     public async Task<WorkoutSession?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         const string sql = """

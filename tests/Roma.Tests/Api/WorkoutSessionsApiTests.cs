@@ -81,6 +81,40 @@ public class WorkoutSessionsApiTests : IClassFixture<WebApplicationFactory<Progr
         var customCreated = await customRes.Content.ReadFromJsonAsync<WorkoutSessionResponse>();
         customCreated!.DurationMinutes.Should().Be(90);
 
+        // 5c. Update session (Full CRUD edit)
+        var updateReq = new UpdateWorkoutSessionRequest(
+            TargetMuscleGroup: "Legs & Core",
+            Rpe: 9,
+            Feeling: 5,
+            RecoveryScore: 5,
+            Notes: "Intense heavy session",
+            DurationMinutes: 80);
+
+        var updateRes = await client.PutAsJsonAsync($"/api/workouts/{created.Id}", updateReq);
+        updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateRes.Content.ReadFromJsonAsync<WorkoutSessionResponse>();
+        updated.Should().NotBeNull();
+        updated!.TargetMuscleGroup.Should().Be("Legs & Core");
+        updated.Rpe.Should().Be(9);
+        updated.Feeling.Should().Be(5);
+        updated.RecoveryScore.Should().Be(5);
+        updated.Notes.Should().Be("Intense heavy session");
+        updated.DurationMinutes.Should().Be(80);
+
+        // Verify update persisted
+        var getUpdatedRes = await client.GetAsync($"/api/workouts/{created.Id}");
+        var fetchedUpdated = await getUpdatedRes.Content.ReadFromJsonAsync<WorkoutSessionResponse>();
+        fetchedUpdated!.TargetMuscleGroup.Should().Be("Legs & Core");
+        fetchedUpdated.DurationMinutes.Should().Be(80);
+
+        // Update with invalid RPE -> 400
+        var invalidUpdateRes = await client.PutAsJsonAsync($"/api/workouts/{created.Id}", new UpdateWorkoutSessionRequest(Rpe: 15));
+        invalidUpdateRes.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Update non-existent -> 404
+        var notFoundUpdateRes = await client.PutAsJsonAsync("/api/workouts/99999", new UpdateWorkoutSessionRequest(Rpe: 7));
+        notFoundUpdateRes.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
         // 6. Delete session
         var deleteRes = await client.DeleteAsync($"/api/workouts/{created.Id}");
         deleteRes.StatusCode.Should().Be(HttpStatusCode.NoContent);
