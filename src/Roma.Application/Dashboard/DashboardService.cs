@@ -14,12 +14,22 @@ public record MuscleGroupCount(
     string MuscleGroup,
     int Count);
 
+public record WorkoutSessionSummary(
+    int Id,
+    string Date,
+    string TargetMuscleGroup,
+    int Rpe,
+    int Feeling,
+    int RecoveryScore,
+    int DurationMinutes);
+
 public record WorkoutStats(
     int TotalSessions,
     int DistinctDaysCount,
     double AverageRpe,
     IReadOnlyList<string> SessionDates,
-    IReadOnlyList<MuscleGroupCount> ByMuscleGroup);
+    IReadOnlyList<MuscleGroupCount> ByMuscleGroup,
+    IReadOnlyList<WorkoutSessionSummary> RecentSessions);
 
 public record TaskStats(
     int TotalTasks,
@@ -146,12 +156,24 @@ public class DashboardService
             .OrderByDescending(g => g.Count)
             .ToList();
 
+        var recentSessions = rawWorkouts
+            .Select(w => new WorkoutSessionSummary(
+                (int)w.Id,
+                w.Date,
+                w.TargetMuscleGroup,
+                (int)w.Rpe,
+                (int)w.Feeling,
+                (int)w.RecoveryScore,
+                (int)(w.DurationMinutes ?? 60)))
+            .ToList();
+
         var workoutStats = new WorkoutStats(
             rawWorkouts.Count,
             distinctDays.Count,
             avgRpe,
             distinctDays,
-            byMuscleGroup
+            byMuscleGroup,
+            recentSessions
         );
 
         // 4. Daily Activity Timeline

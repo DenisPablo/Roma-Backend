@@ -15,6 +15,7 @@ public class WorkoutSession
     public int Feeling { get; private set; }
     public int RecoveryScore { get; private set; }
     public string? Notes { get; private set; }
+    public int? DurationMinutes { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -26,9 +27,10 @@ public class WorkoutSession
         int rpe,
         int feeling,
         int recoveryScore,
-        string? notes = null)
+        string? notes = null,
+        int? durationMinutes = 60)
     {
-        Validate(date, targetMuscleGroup, rpe, feeling, recoveryScore, notes);
+        Validate(date, targetMuscleGroup, rpe, feeling, recoveryScore, notes, durationMinutes);
 
         var now = DateTimeOffset.UtcNow;
         return new WorkoutSession
@@ -39,6 +41,7 @@ public class WorkoutSession
             Feeling = feeling,
             RecoveryScore = recoveryScore,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            DurationMinutes = durationMinutes ?? 60,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -52,6 +55,7 @@ public class WorkoutSession
         int feeling,
         int recoveryScore,
         string? notes,
+        int? durationMinutes,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt)
     {
@@ -64,6 +68,7 @@ public class WorkoutSession
             Feeling = feeling,
             RecoveryScore = recoveryScore,
             Notes = notes,
+            DurationMinutes = durationMinutes ?? 60,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         };
@@ -75,7 +80,8 @@ public class WorkoutSession
         int rpe,
         int feeling,
         int recoveryScore,
-        string? notes)
+        string? notes,
+        int? durationMinutes)
     {
         if (string.IsNullOrWhiteSpace(date) || !DateRegex.IsMatch(date.Trim()))
             throw new DomainValidationException("Date must be in format YYYY-MM-DD.");
@@ -97,5 +103,8 @@ public class WorkoutSession
 
         if (notes != null && notes.Length > 1000)
             throw new DomainValidationException("Notes cannot exceed 1000 characters.");
+
+        if (durationMinutes.HasValue && durationMinutes.Value <= 0)
+            throw new DomainValidationException("Duration must be a positive number of minutes.");
     }
 }

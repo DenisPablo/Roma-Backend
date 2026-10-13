@@ -16,8 +16,8 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
     public async Task<WorkoutSession> AddAsync(WorkoutSession session, CancellationToken ct = default)
     {
         const string sql = """
-            INSERT INTO workout_sessions (date, target_muscle_group, rpe, feeling, recovery_score, notes, created_at, updated_at)
-            VALUES (@Date, @TargetMuscleGroup, @Rpe, @Feeling, @RecoveryScore, @Notes, @CreatedAt, @UpdatedAt)
+            INSERT INTO workout_sessions (date, target_muscle_group, rpe, feeling, recovery_score, notes, duration_minutes, created_at, updated_at)
+            VALUES (@Date, @TargetMuscleGroup, @Rpe, @Feeling, @RecoveryScore, @Notes, @DurationMinutes, @CreatedAt, @UpdatedAt)
             RETURNING id;
             """;
 
@@ -30,6 +30,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
             session.Feeling,
             session.RecoveryScore,
             session.Notes,
+            session.DurationMinutes,
             CreatedAt = session.CreatedAt.ToString("o"),
             UpdatedAt = session.UpdatedAt.ToString("o")
         });
@@ -42,6 +43,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
             session.Feeling,
             session.RecoveryScore,
             session.Notes,
+            session.DurationMinutes,
             session.CreatedAt,
             session.UpdatedAt);
     }
@@ -49,7 +51,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
     public async Task<WorkoutSession?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, created_at, updated_at
+            SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, duration_minutes, created_at, updated_at
             FROM workout_sessions
             WHERE id = @Id AND deleted_at IS NULL;
             """;
@@ -62,7 +64,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
     public async Task<IReadOnlyList<WorkoutSession>> GetSessionsAsync(string? from, string? to, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, created_at, updated_at
+            SELECT id, date, target_muscle_group, rpe, feeling, recovery_score, notes, duration_minutes, created_at, updated_at
             FROM workout_sessions
             WHERE deleted_at IS NULL
               AND (@From IS NULL OR date >= @From)
@@ -92,6 +94,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
         public int Feeling { get; set; }
         public int Recovery_Score { get; set; }
         public string? Notes { get; set; }
+        public int? Duration_Minutes { get; set; }
         public string? Deleted_At { get; set; }
         public string Created_At { get; set; } = string.Empty;
         public string Updated_At { get; set; } = string.Empty;
@@ -105,6 +108,7 @@ public class WorkoutSessionRepository : IWorkoutSessionRepository
                 Feeling,
                 Recovery_Score,
                 Notes,
+                Duration_Minutes,
                 DateTimeOffset.Parse(Created_At),
                 DateTimeOffset.Parse(Updated_At));
     }

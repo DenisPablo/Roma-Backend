@@ -22,7 +22,8 @@ public record RawWorkoutItem(
     string TargetMuscleGroup,
     long Rpe,
     long Feeling,
-    long RecoveryScore);
+    long RecoveryScore,
+    long? DurationMinutes);
 
 public record RawDailyTaskCount(
     string Date,

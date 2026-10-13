@@ -66,7 +66,8 @@ public class DashboardRepository : IDashboardRepository
                 target_muscle_group AS TargetMuscleGroup,
                 rpe AS Rpe,
                 feeling AS Feeling,
-                recovery_score AS RecoveryScore
+                recovery_score AS RecoveryScore,
+                COALESCE(duration_minutes, 60) AS DurationMinutes
             FROM workout_sessions
             WHERE deleted_at IS NULL
               AND date >= @From AND date <= @To

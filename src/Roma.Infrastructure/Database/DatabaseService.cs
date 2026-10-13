@@ -148,6 +148,20 @@ public class DatabaseService
             await conn.ExecuteAsync(sql, transaction: tx);
             await tx.CommitAsync(ct);
         }
+
+        // Migration 4: 004_workout_duration.sql
+        if (!appliedVersions.Contains(4))
+        {
+            using var tx = await conn.BeginTransactionAsync(ct);
+            const string sql = """
+                ALTER TABLE workout_sessions ADD COLUMN duration_minutes INTEGER DEFAULT 60;
+
+                INSERT INTO schema_migrations (version, name) VALUES (4, '004_workout_duration.sql');
+                """;
+
+            await conn.ExecuteAsync(sql, transaction: tx);
+            await tx.CommitAsync(ct);
+        }
     }
 
     private async Task SeedCategoriesAsync(DbConnection conn, CancellationToken ct)

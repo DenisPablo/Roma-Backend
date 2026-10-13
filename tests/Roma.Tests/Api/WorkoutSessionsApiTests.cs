@@ -48,6 +48,7 @@ public class WorkoutSessionsApiTests : IClassFixture<WebApplicationFactory<Progr
         created.Rpe.Should().Be(8);
         created.Feeling.Should().Be(4);
         created.RecoveryScore.Should().Be(3);
+        created.DurationMinutes.Should().Be(60);
 
         // 2. Out of bounds validation (RPE = 12) -> 400
         var invalidReq = new CreateWorkoutSessionRequest("2026-10-15", "Legs", 12, 4, 3);
@@ -72,6 +73,13 @@ public class WorkoutSessionsApiTests : IClassFixture<WebApplicationFactory<Progr
         var list = await listRes.Content.ReadFromJsonAsync<List<WorkoutSessionResponse>>();
         list.Should().NotBeNull();
         list.Should().Contain(s => s.Id == created.Id);
+
+        // 5b. Create session with explicit duration
+        var customReq = new CreateWorkoutSessionRequest("2026-10-16", "Back", 7, 5, 4, DurationMinutes: 90);
+        var customRes = await client.PostAsJsonAsync("/api/workouts", customReq);
+        customRes.StatusCode.Should().Be(HttpStatusCode.Created);
+        var customCreated = await customRes.Content.ReadFromJsonAsync<WorkoutSessionResponse>();
+        customCreated!.DurationMinutes.Should().Be(90);
 
         // 6. Delete session
         var deleteRes = await client.DeleteAsync($"/api/workouts/{created.Id}");

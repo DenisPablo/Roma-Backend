@@ -75,6 +75,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         stats.Workouts.AverageRpe.Should().BeApproximately(7.7, 0.1);
         stats.Workouts.ByMuscleGroup.Should().Contain(m => m.MuscleGroup == "Pierna" && m.Count == 1);
         stats.Workouts.ByMuscleGroup.Should().Contain(m => m.MuscleGroup == "Cardio" && m.Count == 1);
+        stats.Workouts.RecentSessions.Should().HaveCount(3);
+        stats.Workouts.RecentSessions.Should().Contain(s => s.TargetMuscleGroup == "Pecho" && s.DurationMinutes == 60 && s.Feeling == 4 && s.RecoveryScore == 4);
 
         // Verify Task Completion Metrics
         stats.Tasks.TotalTasks.Should().Be(3);

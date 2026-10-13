@@ -10,7 +10,8 @@ public record CreateWorkoutSessionRequest(
     int Rpe,
     int Feeling,
     int RecoveryScore,
-    string? Notes = null);
+    string? Notes = null,
+    int? DurationMinutes = 60);
 
 public record WorkoutSessionResponse(
     int Id,
@@ -20,6 +21,7 @@ public record WorkoutSessionResponse(
     int Feeling,
     int RecoveryScore,
     string? Notes,
+    int? DurationMinutes,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -42,7 +44,8 @@ public class WorkoutSessionService
             request.Rpe,
             request.Feeling,
             request.RecoveryScore,
-            request.Notes);
+            request.Notes,
+            request.DurationMinutes);
 
         var created = await _repository.AddAsync(entity, ct);
         return MapToResponse(created);
@@ -104,6 +107,7 @@ public class WorkoutSessionService
             s.Feeling,
             s.RecoveryScore,
             s.Notes,
+            s.DurationMinutes,
             s.CreatedAt,
             s.UpdatedAt
         );
