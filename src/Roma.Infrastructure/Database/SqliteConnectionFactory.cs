@@ -9,7 +9,12 @@ public class SqliteConnectionFactory : IDbConnectionFactory
 
     public SqliteConnectionFactory(string connectionString)
     {
-        _connectionString = connectionString;
+        var builder = new SqliteConnectionStringBuilder(connectionString)
+        {
+            DefaultTimeout = 30,
+            Pooling = true
+        };
+        _connectionString = builder.ToString();
     }
 
     public async Task<DbConnection> CreateConnectionAsync(CancellationToken ct = default)
@@ -18,7 +23,14 @@ public class SqliteConnectionFactory : IDbConnectionFactory
         await conn.OpenAsync(ct);
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;";
+        cmd.CommandText = """
+            PRAGMA foreign_keys = ON;
+            PRAGMA journal_mode = WAL;
+            PRAGMA busy_timeout = 10000;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA cache_size = -20000;
+            PRAGMA temp_store = MEMORY;
+            """;
         await cmd.ExecuteNonQueryAsync(ct);
 
         return conn;

@@ -88,7 +88,13 @@ builder.Services.AddCors(corsOptions =>
 });
 
 // Database services
-builder.Services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={options.DbPath}"));
+var connectionStringBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+{
+    DataSource = options.DbPath,
+    DefaultTimeout = 30,
+    Pooling = true
+};
+builder.Services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory(connectionStringBuilder.ToString()));
 builder.Services.AddSingleton<DatabaseService>();
 
 // Repositories
