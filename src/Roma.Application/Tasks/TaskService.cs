@@ -28,7 +28,8 @@ public record UpdateTaskRequest(
     string? Day,
     string? ScheduledTime,
     int? CategoryId,
-    int? DurationSeconds = null);
+    int? DurationSeconds = null,
+    string[]? Reminders = null);
 
 public record TaskResponse(
     int Id,
@@ -214,25 +215,30 @@ public class TaskService
             task.UpdateCategory(category.Id);
         }
 
-        if (request.Day != null || request.ScheduledTime != null)
+        var newDay = request.Day ?? task.Day;
+        var newTime = request.ScheduledTime ?? task.ScheduledTime;
+        var scheduleChanged = newDay != task.Day || newTime != task.ScheduledTime;
+
+        if (scheduleChanged)
         {
-            var newDay = request.Day ?? task.Day;
-            var newTime = request.ScheduledTime ?? task.ScheduledTime;
+            var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
+            var newMoment = $"{newDay}T{newTime}";
+            var currentMoment = $"{nowParts.DayString}T{nowParts.TimeString}";
 
-            if (newDay != task.Day || newTime != task.ScheduledTime)
-            {
-                var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
-                var newMoment = $"{newDay}T{newTime}";
-                var currentMoment = $"{nowParts.DayString}T{nowParts.TimeString}";
+            var isFuture = string.CompareOrdinal(newMoment, currentMoment) > 0;
+            task.UpdateSchedule(newDay, newTime, isFuture);
+        }
 
-                var isFuture = string.CompareOrdinal(newMoment, currentMoment) > 0;
-                task.UpdateSchedule(newDay, newTime, isFuture);
-
-                if (task.Kind == "event")
-                {
-                    await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
-                }
-            }
+        if (request.Reminders != null && task.Kind == "event")
+        {
+            var offsets = TimeUtils.ParseOffsets(string.Join(",", request.Reminders));
+            await _reminderRepository.ReplaceForEventAsync(task.Id, offsets, newDay, newTime, ct);
+        }
+        else if (scheduleChanged && task.Kind == "event")
+        {
+            var nowParts = TimeUtils.GetLocalParts(DateTimeOffset.UtcNow, _options.AppTz);
+            var currentMoment = $"{nowParts.DayString}T{nowParts.TimeString}";
+            await _reminderRepository.RecomputeForEventAsync(task.Id, newDay, newTime, currentMoment, ct);
         }
 
         if (request.DurationSeconds.HasValue)

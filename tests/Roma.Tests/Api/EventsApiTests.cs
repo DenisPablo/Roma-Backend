@@ -59,5 +59,30 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
         updated!.Day.Should().Be("2026-10-30");
         updated.ScheduledTime.Should().Be("15:00");
         updated.Reminders!.Select(r => r.DueAt).Should().Equal("2026-10-29T15:00", "2026-10-30T13:00", "2026-10-30T15:00");
+
+        // 5. Update event with new date, time, title, and custom reminders via PUT
+        var putRes = await client.PutAsJsonAsync($"/api/tasks/{evt.Id}", new UpdateTaskRequest(
+            Title: "Dentist Appointment",
+            Day: "2026-11-01",
+            ScheduledTime: "09:30",
+            CategoryId: catId,
+            Reminders: new[] { "-30m", "0" }));
+        putRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updatedWithCustomReminders = await putRes.Content.ReadFromJsonAsync<TaskResponse>();
+        updatedWithCustomReminders.Should().NotBeNull();
+        updatedWithCustomReminders!.Title.Should().Be("Dentist Appointment");
+        updatedWithCustomReminders.Day.Should().Be("2026-11-01");
+        updatedWithCustomReminders.ScheduledTime.Should().Be("09:30");
+        updatedWithCustomReminders.Reminders.Should().NotBeNull();
+        updatedWithCustomReminders.Reminders!.Should().HaveCount(2);
+        updatedWithCustomReminders.Reminders!.Select(r => r.OffsetMinutes).Should().Equal(-30, 0);
+        updatedWithCustomReminders.Reminders!.Select(r => r.DueAt).Should().Equal("2026-11-01T09:00", "2026-11-01T09:30");
+
+        // 6. Verify persistence via GET /api/tasks/{id}
+        var getRes = await client.GetFromJsonAsync<TaskResponse>($"/api/tasks/{evt.Id}");
+        getRes.Should().NotBeNull();
+        getRes!.Title.Should().Be("Dentist Appointment");
+        getRes.Reminders!.Select(r => r.OffsetMinutes).Should().Equal(-30, 0);
     }
 }

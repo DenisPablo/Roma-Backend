@@ -44,6 +44,40 @@ public class ReminderRepository : IReminderRepository
         await tx.CommitAsync(ct);
     }
 
+    public async Task ReplaceForEventAsync(int taskId, int[] offsets, string eventDay, string eventTime, CancellationToken ct = default)
+    {
+        using var conn = await _connectionFactory.CreateConnectionAsync(ct);
+        using var tx = await conn.BeginTransactionAsync(ct);
+
+        const string deleteSql = "DELETE FROM task_reminders WHERE task_id = @TaskId;";
+        await conn.ExecuteAsync(deleteSql, new { TaskId = taskId }, transaction: tx);
+
+        if (offsets != null && offsets.Length > 0)
+        {
+            var moment = LocalParts.FromStrings(eventDay, eventTime);
+            const string insertSql = """
+                INSERT OR IGNORE INTO task_reminders (task_id, offset_minutes, due_at, created_at, updated_at)
+                VALUES (@TaskId, @OffsetMinutes, @DueAt, @CreatedAt, @UpdatedAt);
+                """;
+
+            var nowIso = DateTimeOffset.UtcNow.ToString("o");
+            foreach (var offset in offsets)
+            {
+                var dueAt = TimeUtils.CalcDueAt(moment, offset);
+                await conn.ExecuteAsync(insertSql, new
+                {
+                    TaskId = taskId,
+                    OffsetMinutes = offset,
+                    DueAt = dueAt,
+                    CreatedAt = nowIso,
+                    UpdatedAt = nowIso
+                }, transaction: tx);
+            }
+        }
+
+        await tx.CommitAsync(ct);
+    }
+
     public async Task<IReadOnlyList<TaskReminder>> GetByTaskIdAsync(int taskId, CancellationToken ct = default)
     {
         const string sql = """
